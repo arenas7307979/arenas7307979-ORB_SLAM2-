@@ -29,12 +29,18 @@
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-
-#include<opencv2/core/core.hpp>
-
+#include <nav_msgs/Odometry.h>
+#include <opencv2/core/core.hpp>
+#include <eigen3/Eigen/Dense>
+#include <opencv2/core/eigen.hpp>
 #include"../../../include/System.h"
 
 using namespace std;
+
+
+ros::Publisher pub_odom, pub_rgbImg, pub_depthImg;
+
+
 
 class ImageGrabber
 {
@@ -45,6 +51,8 @@ public:
 
     ORB_SLAM2::System* mpSLAM;
 };
+
+
 
 int main(int argc, char **argv)
 {
@@ -64,6 +72,9 @@ int main(int argc, char **argv)
     ImageGrabber igb(&SLAM);
 
     ros::NodeHandle nh;
+    pub_odom = nh.advertise<nav_msgs::Odometry>("orb_odom", 100);
+    pub_rgbImg = nh.advertise<sensor_msgs::Image>("orb_rgbImage", 100);
+    pub_depthImg = nh.advertise<sensor_msgs::Image>("orb_depthImage", 100);
 
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/rgb/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "camera/depth_registered/image_raw", 1);
@@ -108,8 +119,32 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
     }
+    Eigen::MatrixXd Tcw_eigen(4,4);
+    cv::Mat Tcw = mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec());
 
-    mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec());
+    cv::cv2eigen(Tcw, Tcw_eigen);
+    //std::cout << "Tcw_eigen" << Tcw_eigen << std::endl;
+    Eigen::Vector3d translation_cw = Tcw_eigen.block<3,1>(0,3);
+    Eigen::Matrix3d rotation_cw = Tcw_eigen.block<3,3>(0,0);
+    Eigen::Quaterniond qcw(rotation_cw);
+
+    //Input Depth and Rgb Image
+    pub_rgbImg.publish(*msgRGB);
+    pub_depthImg.publish(*msgD);
+
+    //Input Odom
+    nav_msgs::Odometry odom_msg;
+    odom_msg.header = msgRGB->header;
+    odom_msg.header.frame_id = "odom";
+    odom_msg.child_frame_id = "camera";
+    odom_msg.pose.pose.position.x = translation_cw(0);
+    odom_msg.pose.pose.position.y = translation_cw(1);
+    odom_msg.pose.pose.position.z = translation_cw(2);
+    odom_msg.pose.pose.orientation.w = qcw.w();
+    odom_msg.pose.pose.orientation.x = qcw.x();
+    odom_msg.pose.pose.orientation.y = qcw.y();
+    odom_msg.pose.pose.orientation.z = qcw.z();
+    pub_odom.publish(odom_msg);
 }
 
 

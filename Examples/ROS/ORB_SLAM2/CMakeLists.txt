@@ -38,7 +38,7 @@ if(NOT OpenCV_FOUND)
    endif()
 endif()
 
-find_package(Eigen3 3.1.0 REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(Pangolin REQUIRED)
 
 include_directories(
@@ -46,6 +46,7 @@ ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/../../../
 ${PROJECT_SOURCE_DIR}/../../../include
 ${Pangolin_INCLUDE_DIRS}
+${EIGEN3_INCLUDE_DIR}
 )
 
 set(LIBS 
@@ -66,6 +67,7 @@ target_link_libraries(Mono
 ${LIBS}
 ${Boost_FILESYSTEM_LIBRARY}
 ${Boost_SYSTEM_LIBRARY}
+${EIGEN3_LIBS}
 )
 
 # Node for monocular camera (Augmented Reality Demo)
