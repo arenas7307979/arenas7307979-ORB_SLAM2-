@@ -29,7 +29,7 @@ else()
 endif()
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../../cmake_modules)
-
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 find_package(OpenCV 3.0 QUIET)
 if(NOT OpenCV_FOUND)
    find_package(OpenCV 2.4.3 QUIET)
@@ -64,6 +64,8 @@ src/ros_mono.cc
 
 target_link_libraries(Mono
 ${LIBS}
+${Boost_FILESYSTEM_LIBRARY}
+${Boost_SYSTEM_LIBRARY}
 )
 
 # Node for monocular camera (Augmented Reality Demo)
@@ -75,6 +77,8 @@ src/AR/ViewerAR.cc
 
 target_link_libraries(MonoAR
 ${LIBS}
+${Boost_FILESYSTEM_LIBRARY}
+${Boost_SYSTEM_LIBRARY}
 )
 
 # Node for stereo camera
@@ -84,6 +88,8 @@ src/ros_stereo.cc
 
 target_link_libraries(Stereo
 ${LIBS}
+${Boost_FILESYSTEM_LIBRARY}
+${Boost_SYSTEM_LIBRARY}
 )
 
 # Node for RGB-D camera
@@ -93,5 +99,7 @@ src/ros_rgbd.cc
 
 target_link_libraries(RGBD
 ${LIBS}
+${Boost_FILESYSTEM_LIBRARY}
+${Boost_SYSTEM_LIBRARY}
 )
 
