@@ -146,6 +146,7 @@ void LoadImages(const string &strAssociationFilename, vector<string> &vstrImageF
     fAssociation.open(strAssociationFilename.c_str());
     while(!fAssociation.eof())
     {
+
         string s;
         getline(fAssociation,s);
         if(!s.empty())

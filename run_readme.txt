@@ -16,11 +16,11 @@
    rosbag play --pause tum_rgbd/rgbd_dataset_freiburg2_rpy.bag /camera/depth/image:=/camera/depth_registered/image_raw /camera/rgb/image_color:=/camera/rgb/image_raw
    
 
-3. RUN rgbd(TUM) ::
+3. RUN rgbd(realsense) ::
    rosrun ORB_SLAM2 RGBD PATH_TO_VOCABULARY PATH_TO_SETTINGS_FILE
    Example:
    roscore
    rosrun ORB_SLAM2 RGBD Vocabulary/ORBvoc.txt Examples/RGB-D/realsense.yaml
-   rosbag play --pause d435i/my_robot_indoor1.bag /camera/aligned_depth_to_color/image_raw:=/camera/depth_registered/image_raw /camera/color/image_raw:=/camera/rgb/image_raw
+   rosbag play --pause d435i/indoor4.bag /camera/aligned_depth_to_color/image_raw:=/camera/depth_registered/image_raw /camera/color/image_raw:=/camera/rgb/image_raw
    
-
+ 
