@@ -4,6 +4,9 @@
 # Camera Parameters. Adjust them!
 #--------------------------------------------------------------------------------------------
 
+CameraRGBTopicName: /camera/color/image_raw
+CameraDepthTopicName: /camera/aligned_depth_to_color/image_raw
+
 # Camera calibration and distortion parameters (OpenCV) 
 Camera.fx: 596.076816586472
 Camera.fy: 597.642307942917

@@ -3,6 +3,8 @@
 #--------------------------------------------------------------------------------------------
 # Camera Parameters. Adjust them!
 #--------------------------------------------------------------------------------------------
+CameraRGBTopicName: /camera/rgb/image_color
+CameraDepthTopicName: /camera/depth/image
 
 # Camera calibration and distortion parameters (OpenCV) 
 Camera.fx: 517.306408
@@ -60,7 +62,7 @@ ORBextractor.minThFAST: 7
 Viewer.KeyFrameSize: 0.05
 Viewer.KeyFrameLineWidth: 1
 Viewer.GraphLineWidth: 0.9
-Viewer.PointSize:2
+Viewer.PointSize: 2
 Viewer.CameraSize: 0.08
 Viewer.CameraLineWidth: 3
 Viewer.ViewpointX: 0

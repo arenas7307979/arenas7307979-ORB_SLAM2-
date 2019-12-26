@@ -97,7 +97,10 @@ int main(int argc, char **argv)
         DistCoef.resize(5);
         DistCoef.at<float>(4) = k3;
     }
-
+    string cameraRGBTopicName = fSettings["CameraRGBTopicName"];
+    string cameraDepthTopicName = fSettings["CameraDepthTopicName"];
+    std::cout << "cameraRGBTopicName=" << cameraRGBTopicName <<std::endl;
+    std::cout << "cameraDepthTopicName=" << cameraDepthTopicName <<std::endl;
     ImageGrabber igb(&SLAM);
 
     ros::NodeHandle nh;
@@ -105,8 +108,8 @@ int main(int argc, char **argv)
     pub_rgbImg = nh.advertise<sensor_msgs::Image>("orb_rgbImage", 100);
     pub_depthImg = nh.advertise<sensor_msgs::Image>("orb_depthImage", 100);
     pub_cameraInfo = nh.advertise<sensor_msgs::CameraInfo>("orb_cameraInfo", 100);
-    message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/rgb/image_raw", 1);
-    message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "camera/depth_registered/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, cameraRGBTopicName, 1);
+    message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, cameraDepthTopicName, 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2));
@@ -150,54 +153,62 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     }
     Eigen::MatrixXd Tcw_eigen(4,4);
     cv::Mat Tcw = mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec());
-
+    
     cv::cv2eigen(Tcw, Tcw_eigen);
     //std::cout << "Tcw_eigen" << Tcw_eigen << std::endl;
     Eigen::Vector3d translation_cw = Tcw_eigen.block<3,1>(0,3);
     Eigen::Matrix3d rotation_cw = Tcw_eigen.block<3,3>(0,0);
     Eigen::Quaterniond qcw(rotation_cw);
+    Eigen::Quaterniond qwc = qcw.inverse();
+    Eigen::Vector3d translation_wc = -qwc.matrix() * translation_cw;
+    
 
+    sensor_msgs::Image rgb_img = *(msgRGB);
+    sensor_msgs::Image depth_img = *(msgD);
+    
+    rgb_img.header.frame_id = "orb_camera";
+    depth_img.header.frame_id = "orb_camera";
     //Input Depth and Rgb Image
-    pub_rgbImg.publish(*msgRGB);
-    pub_depthImg.publish(*msgD);
-
-    //Input Odom Tcw
+    pub_rgbImg.publish(rgb_img);
+    pub_depthImg.publish(depth_img);
+	
+    //Input Odom Twc
     geometry_msgs::TransformStamped odom_msg;
-    odom_msg.header = msgRGB->header;
-    odom_msg.header.frame_id = "camera";
-    odom_msg.child_frame_id = "odom";
-    odom_msg.transform.translation.x = translation_cw(0);
-    odom_msg.transform.translation.y = translation_cw(1);
-    odom_msg.transform.translation.z = translation_cw(2);
-    odom_msg.transform.rotation.w = qcw.w();
-    odom_msg.transform.rotation.x = qcw.x();
-    odom_msg.transform.rotation.y = qcw.y();
-    odom_msg.transform.rotation.z = qcw.z();
+    odom_msg.header = rgb_img.header;
+    odom_msg.header.frame_id = "odom";
+    odom_msg.child_frame_id = rgb_img.header.frame_id;
+    odom_msg.transform.translation.x = translation_wc(0);
+    odom_msg.transform.translation.y = translation_wc(1);
+    odom_msg.transform.translation.z = translation_wc(2);
+    odom_msg.transform.rotation.w = qwc.w();
+    odom_msg.transform.rotation.x = qwc.x();
+    odom_msg.transform.rotation.y = qwc.y();
+    odom_msg.transform.rotation.z = qwc.z();
     pub_odom.publish(odom_msg); 
 
-    //pub tf from Tcw(Thead_child)
+    //pub tf from Twc(Thead_child)
     static tf2_ros::TransformBroadcaster br;
     geometry_msgs::TransformStamped TransStamp;
-    TransStamp.transform.translation.x = translation_cw(0);
-    TransStamp.transform.translation.y = translation_cw(1);
-    TransStamp.transform.translation.z = translation_cw(2);
-    TransStamp.transform.rotation.w = qcw.w();
-    TransStamp.transform.rotation.x = qcw.x();
-    TransStamp.transform.rotation.y = qcw.y();
-    TransStamp.transform.rotation.z = qcw.z();
+    TransStamp.transform.translation.x = translation_wc(0);
+    TransStamp.transform.translation.y = translation_wc(1);
+    TransStamp.transform.translation.z = translation_wc(2);
+    TransStamp.transform.rotation.w = qwc.w();
+    TransStamp.transform.rotation.x = qwc.x();
+    TransStamp.transform.rotation.y = qwc.y();
+    TransStamp.transform.rotation.z = qwc.z();
 
     TransStamp.header.seq = 0;
-    TransStamp.header.stamp = msgRGB->header.stamp;
-    TransStamp.child_frame_id = "odom"; //world coordinate
-    TransStamp.header.frame_id = msgRGB->header.frame_id; //camera coordinate
+    TransStamp.header.stamp = rgb_img.header.stamp;
+    TransStamp.header.frame_id = "odom";
+    TransStamp.child_frame_id = rgb_img.header.frame_id; 
     br.sendTransform(TransStamp);
 
 
     //pub cameraInfo
     sensor_msgs::CameraInfo cam_info;
-    cam_info.header = msgRGB->header;
-    cam_info.width = msgRGB->width;
-    cam_info.height = msgRGB->height;
+    cam_info.header = rgb_img.header;
+    cam_info.width = rgb_img.width;
+    cam_info.height = rgb_img.height;
     cam_info.distortion_model = "plumb_bob";
     cam_info.binning_x = 0;
     cam_info.binning_y = 0;
